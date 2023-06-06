@@ -1,0 +1,8 @@
+__pycache__/
+challenge2017
+.DS_Store
+.env
+data/*.csv
+data/*.json
+data/dataset_x/*.txt
+runs
