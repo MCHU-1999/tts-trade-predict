@@ -16,22 +16,22 @@ from torch.utils.data import DataLoader, Dataset
 from dataset import KlineDataset, split_and_load
 
 # Constants -------------------------------
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 MODEL_TYPE = 'resnet18'
-
+DEVICE = 'mps'
 
 # -----------------------------------------
 
-# def load_state_dict(model_dir, is_multi_gpu):
-#     state_dict = torch.load(model_dir, map_location=lambda storage, loc: storage)['state_dict']
-#     if is_multi_gpu:
-#         new_state_dict = OrderedDict()
-#         for k, v in state_dict.items():
-#             name = k[7:]       # remove `module.`
-#             new_state_dict[name] = v
-#         return new_state_dict
-#     else:
-#         return state_dict
+def load_state_dict(model_dir, is_multi_gpu):
+    state_dict = torch.load(model_dir, map_location=lambda storage, loc: storage)['state_dict']
+    if is_multi_gpu:
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            name = k[7:]       # remove `module.`
+            new_state_dict[name] = v
+        return new_state_dict
+    else:
+        return state_dict
 
 def main(args):
     if 0 == len(args.resume):
@@ -53,28 +53,35 @@ def main(args):
     train_loader = DataLoader(train_dataset, batch_size = BATCH_SIZE)
     val_loader = DataLoader(val_dataset, batch_size = BATCH_SIZE)
 
+    # load model
+    state_dict = load_state_dict('./checkpoint/resnet18/Model_best.ckpt', False)
+
     if args.debug:
         x, y =next(iter(train_loader))
         logger.append([x, y])
 
     cudnn.benchmark = True
     my_model = resnet_cbam.resnet18_cbam()
-    is_use_cuda = torch.cuda.is_available()
+    my_model.load_state_dict(state_dict)
+    gpu_exist = torch.cuda.is_available() or torch.backends.mps.is_available()
+    device = torch.device(DEVICE)
 
     #my_model.apply(fc_init)
-    if is_use_cuda:
-        my_model = my_model.cuda()
+    # if gpu_exist:
+    my_model = my_model.to(device)
 
-    loss_fn = [nn.CrossEntropyLoss()]
-    optimizer = optim.SGD(my_model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-4)
-    lr_schedule = lr_scheduler.MultiStepLR(optimizer, milestones=[30, 60], gamma=0.1)
+    loss_function = [nn.MSELoss()]
+    # optimizer = optim.SGD(my_model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
+    optimizer = optim.Adam(my_model.parameters(), lr=0.001)
+    lr_schedule = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+    # lr_schedule = lr_scheduler.MultiStepLR(optimizer, milestones=[15, 30, 45, 60], gamma=0.4)
 
     # metric = [ClassErrorMeter([1,5], True)]
-    metric = [MSEMeter(root=False)]
+    metric = [MSEMeter(root=True)]
     start_epoch = 0
-    num_epochs = 50
+    num_epochs = 100
 
-    my_trainer = Trainer(my_model, MODEL_TYPE, loss_fn, optimizer, lr_schedule, 500, is_use_cuda, train_loader, \
+    my_trainer = Trainer(my_model, MODEL_TYPE, loss_function, optimizer, lr_schedule, 500, gpu_exist, device, train_loader, \
                         val_loader, metric, start_epoch, num_epochs, args.debug, logger, writer)
     my_trainer.fit()
     logger.append('Optimize Done!')
@@ -87,18 +94,6 @@ if __name__ == '__main__':
                         help='path to latest checkpoint (default: None)')
     parser.add_argument('--debug', action='store_true', dest='debug', default=False,
                         help='trainer debug flag')
-    # parser.add_argument('-g', '--gpu', default='0', type=str,
-    #                     help='GPU ID Select')                    
-    # parser.add_argument('-d', '--data_root', default='./datasets',
-    #                      type=str, help='data root')
-    # parser.add_argument('-t', '--train_file', default='./datasets/train.txt',
-    #                      type=str, help='train file')
-    # parser.add_argument('-v', '--val_file', default='./datasets/val.txt',
-    #                      type=str, help='validation file')
-    # parser.add_argument('-m', '--model', default='resnet101',
-    #                      type=str, help='model type')
-    # parser.add_argument('--batch_size', default=12,
-    #                      type=int, help='model train batch size')
     parser.add_argument('--display', action='store_true', dest='display', default=True,
                         help='Use TensorboardX to Display')
     args = parser.parse_args()

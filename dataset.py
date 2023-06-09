@@ -23,6 +23,8 @@ class KlineDataset(Dataset):
     def __getitem__(self, index):
         each_x = np.loadtxt(f'./data/dataset_x/BTCUSDT_{index}.txt', delimiter=',', dtype=np.float32, skiprows=0)
         x_data = np.reshape(each_x, (5, 5, 90))
+        x_data = np.transpose(x_data, (1, 0, 2))
+        # print(x_data.shape)
         x_data = torch.from_numpy(x_data)
         return x_data, self.y[index]
 

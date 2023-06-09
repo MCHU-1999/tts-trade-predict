@@ -7,7 +7,7 @@ import sys
 import os
 
 class Trainer():
-    def __init__(self, model, model_type, loss_fn, optimizer, lr_schedule, log_batchs, is_use_cuda, train_data_loader, \
+    def __init__(self, model, model_type, loss_fn, optimizer, lr_schedule, log_batchs, gpu_exist, device, train_data_loader, \
                 valid_data_loader=None, metric=None, start_epoch=0, num_epochs=50, is_debug=False, logger=None, writer=None):
         self.model = model
         self.model_type = model_type
@@ -15,7 +15,8 @@ class Trainer():
         self.optimizer = optimizer
         self.lr_schedule = lr_schedule
         self.log_batchs = log_batchs
-        self.is_use_cuda = is_use_cuda
+        self.gpu_exist = gpu_exist
+        self.device = device
         self.train_data_loader = train_data_loader
         self.valid_data_loader = valid_data_loader
         self.metric = metric
@@ -47,7 +48,7 @@ class Trainer():
 
     def _dump_infos(self):
         self.logger.append('---------------------Current Parameters---------------------')
-        self.logger.append('is using GPU: ' + ('True' if self.is_use_cuda else 'False'))
+        self.logger.append('is using GPU: ' + ('True' if self.gpu_exist else 'False'))
         self.logger.append('lr: %f' % (self.lr_schedule.get_lr()[0]))
         self.logger.append('model_type: %s' % (self.model_type))
         self.logger.append('current epoch: %d' % (self.cur_epoch))
@@ -62,8 +63,8 @@ class Trainer():
             self.metric[0].reset()
 
         for i, (inputs, labels) in enumerate(self.train_data_loader):              # Notice
-            if self.is_use_cuda:
-                inputs, labels = inputs.cuda(), labels.cuda()
+            if self.gpu_exist:
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
                 labels = labels.squeeze()
             else:
                 labels = labels.squeeze()
@@ -71,11 +72,10 @@ class Trainer():
 
             self.optimizer.zero_grad()
             outputs = self.model(inputs)            # Notice 
-            # print(outputs.shape)
             loss = self.loss_fn[0](outputs, labels)
             if self.metric is not None:
                 # prob     = F.softmax(outputs, dim=1).data.cpu()
-                self.metric[0].add(outputs.detach(), labels.data.cpu())
+                self.metric[0].add(outputs.detach().cpu(), labels.data.cpu())
             loss.backward()
             self.optimizer.step()
 
@@ -85,12 +85,16 @@ class Trainer():
                 batch_mean_loss  = np.mean(losses)
                 print_str = '[%s]\tTraining Batch[%d/%d]\t Losses: %.4f\t'           \
                             % (local_time_str, i, len(self.train_data_loader) - 1, batch_mean_loss)
+                
                 if i == len(self.train_data_loader) - 1 and self.metric is not None:
-                    top1_acc_score = self.metric[0].value()[0]
-                    top5_acc_score = self.metric[0].value()[1]
-                    print_str += '@Top-1 Score: %.4f\t' % (top1_acc_score)
-                    print_str += '@Top-5 Score: %.4f\t' % (top5_acc_score)
+                    top1_acc_score = self.metric[0].value()
+                    # top5_acc_score = self.metric[0].value()[1]
+                    print_str += '@rooted loss mean: %.4f\t' % (top1_acc_score)
+                    # print_str += '@Top-5 Score: %.4f\t' % (top5_acc_score)
                 self.logger.append(print_str)
+                print(f'predict[0]: ', outputs[0].tolist()[:4])
+                print(f'labels[0]: ', labels[0].tolist()[:4])
+
         self.writer.add_scalar('loss/loss_c', batch_mean_loss, self.cur_epoch)
 
     def _valid(self):
@@ -102,8 +106,8 @@ class Trainer():
 
         with torch.no_grad():              # Notice
             for i, (inputs, labels) in enumerate(self.valid_data_loader):
-                if self.is_use_cuda:
-                    inputs, labels = inputs.cuda(), labels.cuda()
+                if self.gpu_exist:
+                    inputs, labels = inputs.to(self.device), labels.to(self.device)
                     labels = labels.squeeze()
                 else:
                     labels = labels.squeeze()
@@ -113,7 +117,7 @@ class Trainer():
 
                 if self.metric is not None:
                     # prob     = F.softmax(outputs, dim=1).data.cpu()
-                    self.metric[0].add(outputs.detach(), labels.data.cpu())
+                    self.metric[0].add(outputs.detach().cpu(), labels.data.cpu())
                 losses.append(loss.item())
             
         local_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
@@ -122,13 +126,13 @@ class Trainer():
         print_str = '[%s]\tValidation: \t Losses: %.4f\t'     \
                     % (local_time_str, batch_mean_loss)
         if self.metric is not None:
-            top1_acc_score = self.metric[0].value()[0]
-            top5_acc_score = self.metric[0].value()[1]
-            print_str += '@Top-1 Score: %.4f\t' % (top1_acc_score)
-            print_str += '@Top-5 Score: %.4f\t' % (top5_acc_score)
+            top1_acc_score = self.metric[0].value()
+            # top5_acc_score = self.metric[0].value()[1]
+            print_str += '@rooted loss mean: %.4f\t' % (top1_acc_score)
+            # print_str += '@Top-5 Score: %.4f\t' % (top5_acc_score)
         self.logger.append(print_str)
-        if top1_acc_score >= self.best_acc:
-            self.best_acc = top1_acc_score
+        if batch_mean_loss <= self.best_loss:
+            # self.best_acc = top1_acc_score
             self.best_loss = batch_mean_loss
 
     def _save_best_model(self):
