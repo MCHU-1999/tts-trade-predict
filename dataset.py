@@ -8,7 +8,6 @@ from sklearn.model_selection import train_test_split
 
 FILES = os.listdir(f'./data/dataset_x/')
 
-# example of dataset create
 class KlineDataset(Dataset):
     # data loading
     def __init__(self, _x:list, _y:list):
@@ -26,6 +25,28 @@ class KlineDataset(Dataset):
         x_data = np.transpose(x_data, (1, 0, 2))
         # print(x_data.shape)
         x_data = torch.from_numpy(x_data)
+        return x_data, self.y[index]
+
+    # return the length of our dataset
+    def __len__(self):
+
+        return self.n_samples
+    
+class KlineDataset_256(Dataset):
+    # data loading
+    def __init__(self, _x:list, _y:list):
+        _x = np.array(_x)
+        _y = np.array(_y)
+
+        self.x = torch.from_numpy(_x)
+        self.y = torch.from_numpy(_y)
+        self.n_samples = _y.shape[0]
+
+    # indexing
+    def __getitem__(self, index):
+        each_x = np.loadtxt(f'./data/dataset_x/BTCUSDT_{index}.txt', delimiter=',', dtype=np.float32, skiprows=0)
+        # print(x_data.shape)
+        x_data = torch.from_numpy(each_x)
         return x_data, self.y[index]
 
     # return the length of our dataset

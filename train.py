@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
 import model.resnet_cbam as resnet_cbam
+import model.transformer1d as transformer1d
 from trainer.trainer import Trainer
 from utils.logger import Logger
 from PIL import Image
@@ -13,11 +14,11 @@ from torchnet.meter import ClassErrorMeter, MSEMeter
 from tensorboardX import SummaryWriter
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader, Dataset
-from dataset import KlineDataset, split_and_load
+from dataset import KlineDataset, KlineDataset_256, split_and_load
 
 # Constants -------------------------------
 BATCH_SIZE = 32
-MODEL_TYPE = 'resnet18'
+MODEL_TYPE = 'transformer1d'
 DEVICE = 'mps'
 
 # -----------------------------------------
@@ -48,31 +49,31 @@ def main(args):
 
     # prepare data
     x_train, x_test, y_train, y_test = split_and_load(test_size=0.2, random_state=33)
-    train_dataset = KlineDataset(x_train, y_train)
-    val_dataset = KlineDataset(x_test, y_test)
+    train_dataset = KlineDataset_256(x_train, y_train)
+    val_dataset = KlineDataset_256(x_test, y_test)
     train_loader = DataLoader(train_dataset, batch_size = BATCH_SIZE)
     val_loader = DataLoader(val_dataset, batch_size = BATCH_SIZE)
 
     # load model
-    state_dict = load_state_dict('./checkpoint/resnet18/Model_best.ckpt', False)
+    # state_dict = load_state_dict('./checkpoint/resnet18/Model_best.ckpt', False)
 
     if args.debug:
         x, y =next(iter(train_loader))
         logger.append([x, y])
 
     cudnn.benchmark = True
-    my_model = resnet_cbam.resnet18_cbam()
-    my_model.load_state_dict(state_dict)
+    # my_model = resnet_cbam.resnet18_cbam()
+    my_model = transformer1d.Transformer1d()
+    # my_model.load_state_dict(state_dict)
     gpu_exist = torch.cuda.is_available() or torch.backends.mps.is_available()
     device = torch.device(DEVICE)
 
-    #my_model.apply(fc_init)
     # if gpu_exist:
     my_model = my_model.to(device)
 
     loss_function = [nn.MSELoss()]
     # optimizer = optim.SGD(my_model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
-    optimizer = optim.Adam(my_model.parameters(), lr=0.001)
+    optimizer = optim.Adam(my_model.parameters(), lr=0.009)
     lr_schedule = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
     # lr_schedule = lr_scheduler.MultiStepLR(optimizer, milestones=[15, 30, 45, 60], gamma=0.4)
 

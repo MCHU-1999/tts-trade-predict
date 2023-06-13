@@ -34,7 +34,7 @@ def get_time(timestamp: int = None):  # get current time, precise to seconds.
     return dt2.strftime("%Y-%m-%d %H:%M:%S")
 
 def round_timestamp(time_string):
-    minute = int(int(time_string.split(':')[1]) / 5) * 5
+    minute = int(time_string.split(':')[1])
     time_string = f"{time_string.split(':')[0]}:{minute}:00"
     return int(time.mktime(time.strptime(time_string, "%Y-%m-%d %H:%M:%S")))
 
@@ -54,31 +54,46 @@ def merge_kline_data(dict_data, timescale_in_min, output_file_name):
         if os.path.exists(f'./{output_file_name}.csv'):
             os.remove(f'./{output_file_name}.csv')
 
-        for index in tqdm(range(0, len(dict_data), timescale_in_min)):
-            if index+timescale_in_min-1 > len(dict_data)-1:
+        if timescale_in_min == 1:
+            for index in tqdm(range(0, len(dict_data))):
                 new_line = [
                     dict_data[index]["timestamp"],
-                    dict_data[-1]["closeTimestamp"],
+                    dict_data[index]["closeTimestamp"],
                     dict_data[index]["open"],
-                    max([ dict_data[i]["high"] for i in range(index, len(dict_data)) ]),
-                    min([ dict_data[i]["low"] for i in range(index, len(dict_data)) ]),
-                    dict_data[-1]["close"],
-                    sum([ dict_data[i]["volume"] for i in range(index, len(dict_data)) ]),
-                    sum([ dict_data[i]["amount"] for i in range(index, len(dict_data)) ]),
+                    dict_data[index]["high"],
+                    dict_data[index]["low"],
+                    dict_data[index]["close"],
+                    dict_data[index]["volume"],
+                    dict_data[index]["amount"],
                 ]
-            else:
-                new_line = [
-                    dict_data[index]["timestamp"],
-                    dict_data[index+timescale_in_min-1]["closeTimestamp"],
-                    dict_data[index]["open"],
-                    max([ dict_data[index+i]["high"] for i in range(timescale_in_min) ]),
-                    min([ dict_data[index+i]["low"] for i in range(timescale_in_min) ]),
-                    dict_data[index+timescale_in_min-1]["close"],
-                    sum([ dict_data[index+i]["volume"] for i in range(timescale_in_min) ]),
-                    sum([ dict_data[index+i]["amount"] for i in range(timescale_in_min) ]),
-                ]
-            new_line_df = pd.DataFrame(data=[new_line])
-            new_line_df.to_csv(f'./{output_file_name}.csv', mode='a', index=False, header=False)
+                new_line_df = pd.DataFrame(data=[new_line])
+                new_line_df.to_csv(f'./{output_file_name}.csv', mode='a', index=False, header=False)
+        else:
+            for index in tqdm(range(0, len(dict_data), timescale_in_min)):
+                if index+timescale_in_min-1 > len(dict_data)-1:
+                    new_line = [
+                        dict_data[index]["timestamp"],
+                        dict_data[-1]["closeTimestamp"],
+                        dict_data[index]["open"],
+                        max([ dict_data[i]["high"] for i in range(index, len(dict_data)) ]),
+                        min([ dict_data[i]["low"] for i in range(index, len(dict_data)) ]),
+                        dict_data[-1]["close"],
+                        sum([ dict_data[i]["volume"] for i in range(index, len(dict_data)) ]),
+                        sum([ dict_data[i]["amount"] for i in range(index, len(dict_data)) ]),
+                    ]
+                else:
+                    new_line = [
+                        dict_data[index]["timestamp"],
+                        dict_data[index+timescale_in_min-1]["closeTimestamp"],
+                        dict_data[index]["open"],
+                        max([ dict_data[index+i]["high"] for i in range(timescale_in_min) ]),
+                        min([ dict_data[index+i]["low"] for i in range(timescale_in_min) ]),
+                        dict_data[index+timescale_in_min-1]["close"],
+                        sum([ dict_data[index+i]["volume"] for i in range(timescale_in_min) ]),
+                        sum([ dict_data[index+i]["amount"] for i in range(timescale_in_min) ]),
+                    ]
+                new_line_df = pd.DataFrame(data=[new_line])
+                new_line_df.to_csv(f'./{output_file_name}.csv', mode='a', index=False, header=False)
 
         return True
     except Exception as e:
@@ -89,26 +104,30 @@ def gen_csv():
     # generate kline data in larger time scale
     data_1min = load_json('1min_BTCUSDT.json')
 
-    # 5 min k
-    print('5 min')
-    result = merge_kline_data(data_1min, 5, '5min_BTCUSDT')
+    # 1 min k
+    print('1 min')
+    result = merge_kline_data(data_1min, 1, '1min_BTCUSDT')
     print('done' if result else 'failed')
-    # 15 min k
-    print('15 min')
-    result = merge_kline_data(data_1min, 15, '15min_BTCUSDT')
-    print('done' if result else 'failed')
-    # 1 hour k
-    print('1 hour')
-    result = merge_kline_data(data_1min, 60, '1hour_BTCUSDT')
-    print('done' if result else 'failed')
-    # 4 hour k
-    print('4 hour')
-    result = merge_kline_data(data_1min, 240, '4hour_BTCUSDT')
-    print('done' if result else 'failed')
-    # 1 day k
-    print('1 day')
-    result = merge_kline_data(data_1min, 1440, '1day_BTCUSDT')
-    print('done' if result else 'failed')
+    # # 5 min k
+    # print('5 min')
+    # result = merge_kline_data(data_1min, 5, '5min_BTCUSDT')
+    # print('done' if result else 'failed')
+    # # 15 min k
+    # print('15 min')
+    # result = merge_kline_data(data_1min, 15, '15min_BTCUSDT')
+    # print('done' if result else 'failed')
+    # # 1 hour k
+    # print('1 hour')
+    # result = merge_kline_data(data_1min, 60, '1hour_BTCUSDT')
+    # print('done' if result else 'failed')
+    # # 4 hour k
+    # print('4 hour')
+    # result = merge_kline_data(data_1min, 240, '4hour_BTCUSDT')
+    # print('done' if result else 'failed')
+    # # 1 day k
+    # print('1 day')
+    # result = merge_kline_data(data_1min, 1440, '1day_BTCUSDT')
+    # print('done' if result else 'failed')
 
     return None
 
@@ -175,23 +194,29 @@ def update_data_from_binance():
 
     return None
 
-def get_trader_open_timestamp(symbol):
+def get_trader_open_timestamp(symbol, fake=True):
     if os.path.exists(f'./{symbol}_open_timestamp.csv'):
         os.remove(f'./{symbol}_open_timestamp.csv')
-    print('query mongoDB')
-    all_trader = DRAWDOWN_DB.find({})
-    all_trader = list(all_trader)
-    print('data loaded')
 
-    trade_list = []
-    for each_trader in tqdm(all_trader):
-        for each_trade in each_trader["history"]:
-            if symbol == each_trade["symbol"]:
-                new_line = round_timestamp(each_trade["openDate"])
-                if new_line > 1685203200 or new_line < 1648828800: # trades between 2022-04-02 to 2023-05-28
-                    pass
-                else:
-                    trade_list.append(new_line)
+    if fake:
+        # trades between 2022-08-20 to 2023-05-28
+        trade_list = np.arange(1660924800, 1685203200, 60, dtype=int)
+        print(trade_list)
+    else:
+        print('query mongoDB')
+        all_trader = DRAWDOWN_DB.find({})
+        all_trader = list(all_trader)
+        print('data loaded')
+        trade_list = []
+
+        for each_trader in tqdm(all_trader):
+            for each_trade in each_trader["history"]:
+                if symbol == each_trade["symbol"]:
+                    new_line = round_timestamp(each_trade["openDate"])
+                    if new_line < 1648828800 or new_line > 1685203200 : # trades between 2022-04-02 to 2023-05-28
+                        pass
+                    else:
+                        trade_list.append(new_line)
 
     set_list = set(trade_list)
     unique_list = (set_list)
@@ -199,12 +224,13 @@ def get_trader_open_timestamp(symbol):
     unique_list_df.to_csv(f'./{symbol}_open_timestamp.csv', mode='w', index=False, header=False)
     return None
 
-def gen_dataset(symbol):
+def gen_dataset_type1(symbol):
     if os.path.exists(f'./{symbol}_dataset_y.csv'):
         os.remove(f'./{symbol}_dataset_y.csv')
     if not os.path.exists(f'./dataset_x'):
         os.mkdir(f'./dataset_x')
 
+    df_1m = pd.read_csv(f'./1min_{symbol}.csv', header=None, names=TITLE)
     df_5m = pd.read_csv(f'./5min_{symbol}.csv', header=None, names=TITLE)
     df_15m = pd.read_csv(f'./15min_{symbol}.csv', header=None, names=TITLE)
     df_1h = pd.read_csv(f'./1hour_{symbol}.csv', header=None, names=TITLE)
@@ -217,13 +243,15 @@ def gen_dataset(symbol):
     counter = 0
     for each_timestamp in tqdm(df_open_time["rounded_open_timestamp"]):
         # try to match every data
-        match_index_5m = df_5m.index[df_5m["open_timestamp"] == each_timestamp].tolist()
+        match_index_1m = df_1m.index[df_1m["open_timestamp"] == each_timestamp].tolist()
+        match_index_5m = df_5m.index[(df_5m["open_timestamp"] <= each_timestamp) & (df_5m["open_timestamp"]+300 > each_timestamp)].tolist()
         match_index_15m = df_15m.index[(df_15m["open_timestamp"] <= each_timestamp) & (df_15m["open_timestamp"]+900 > each_timestamp)].tolist()
         match_index_1h = df_1h.index[(df_1h["open_timestamp"] <= each_timestamp) & (df_1h["open_timestamp"]+3600 > each_timestamp)].tolist()
         match_index_4h = df_4h.index[(df_4h["open_timestamp"] <= each_timestamp) & (df_4h["open_timestamp"]+14400 > each_timestamp)].tolist()
         match_index_1d = df_1d.index[(df_1d["open_timestamp"] <= each_timestamp) & (df_1d["open_timestamp"]+86400 > each_timestamp)].tolist()
         
-        if len(match_index_5m) == 1 and len(match_index_15m) == 1 and len(match_index_1h) == 1 and len(match_index_4h) == 1 and len(match_index_1d) == 1:
+        if len(match_index_1m) == 1 and len(match_index_5m) == 1 and len(match_index_15m) == 1 and len(match_index_1h) == 1 and len(match_index_4h) == 1 and len(match_index_1d) == 1:
+            match_index_1m = match_index_1m[0]
             match_index_5m = match_index_5m[0]
             match_index_15m = match_index_15m[0]
             match_index_1h = match_index_1h[0]
@@ -236,7 +264,7 @@ def gen_dataset(symbol):
 
             # syntax: df.iloc[row, column]
             x_data = np.concatenate((
-                df_5m.iloc[match_index_5m-90:match_index_5m-1, [2,3,4,5,7]].T.to_numpy(),
+                df_5m.iloc[match_index_5m-89:match_index_5m, [2,3,4,5,7]].T.to_numpy(),
                 df_15m.iloc[match_index_15m-89:match_index_15m, [2,3,4,5,7]].T.to_numpy(),
                 df_1h.iloc[match_index_1h-89:match_index_1h, [2,3,4,5,7]].T.to_numpy(),
                 df_4h.iloc[match_index_4h-89:match_index_4h, [2,3,4,5,7]].T.to_numpy(),
@@ -245,30 +273,30 @@ def gen_dataset(symbol):
 
             append_last = np.array([[
                 x_data[3][-1],
-                df_5m['high'][match_index_5m],
-                df_5m['low'][match_index_5m],
-                df_5m['close'][match_index_5m],
-                df_5m['volume'][match_index_5m],
+                max(df_1m['high'][((match_index_5m - 1) * 5) + 1 : match_index_1m+1]),
+                min(df_1m['low'][((match_index_5m - 1) * 5) + 1 : match_index_1m+1]),
+                df_1m['close'][match_index_1m],
+                sum(df_1m['volume'][((match_index_5m - 1) * 5) + 1 : match_index_1m+1]),
                 x_data[8][-1],
-                max(df_5m['high'][((match_index_15m - 1) * 3) + 1 : match_index_5m+1]),
-                min(df_5m['low'][((match_index_15m - 1) * 3) + 1 : match_index_5m+1]),
-                df_5m['close'][match_index_5m],
-                sum(df_5m['volume'][((match_index_15m - 1) * 3) + 1 : match_index_5m+1]),
+                max(df_1m['high'][((match_index_15m - 1) * 15) + 1 : match_index_1m+1]),
+                min(df_1m['low'][((match_index_15m - 1) * 15) + 1 : match_index_1m+1]),
+                df_1m['close'][match_index_1m],
+                sum(df_1m['volume'][((match_index_15m - 1) * 15) + 1 : match_index_1m+1]),
                 x_data[13][-1],
-                max(df_5m['high'][((match_index_1h - 1) * 12) + 1 : match_index_5m+1]),
-                min(df_5m['low'][((match_index_1h - 1) * 12) + 1 : match_index_5m+1]),
-                df_5m['close'][match_index_5m],
-                sum(df_5m['volume'][((match_index_1h - 1) * 12) + 1 : match_index_5m+1]),
+                max(df_1m['high'][((match_index_1h - 1) * 60) + 1 : match_index_1m+1]),
+                min(df_1m['low'][((match_index_1h - 1) * 60) + 1 : match_index_1m+1]),
+                df_1m['close'][match_index_1m],
+                sum(df_1m['volume'][((match_index_1h - 1) * 60) + 1 : match_index_1m+1]),
                 x_data[18][-1],
-                max(df_5m['high'][((match_index_4h - 1) * 48) + 1 : match_index_5m+1]),
-                min(df_5m['low'][((match_index_4h - 1) * 48) + 1 : match_index_5m+1]),
-                df_5m['close'][match_index_5m],
-                sum(df_5m['volume'][((match_index_4h - 1) * 48) + 1 : match_index_5m+1]),
+                max(df_1m['high'][((match_index_4h - 1) * 240) + 1 : match_index_1m+1]),
+                min(df_1m['low'][((match_index_4h - 1) * 240) + 1 : match_index_1m+1]),
+                df_1m['close'][match_index_1m],
+                sum(df_1m['volume'][((match_index_4h - 1) * 240) + 1 : match_index_1m+1]),
                 x_data[23][-1],
-                max(df_5m['high'][((match_index_1d - 1) * 288) + 1 : match_index_5m+1]),
-                min(df_5m['low'][((match_index_1d - 1) * 288) + 1 : match_index_5m+1]),
-                df_5m['close'][match_index_5m],
-                sum(df_5m['volume'][((match_index_1d - 1) * 288) + 1 : match_index_5m+1]),
+                max(df_1m['high'][((match_index_1d - 1) * 1440) + 1 : match_index_1m+1]),
+                min(df_1m['low'][((match_index_1d - 1) * 1440) + 1 : match_index_1m+1]),
+                df_1m['close'][match_index_1m],
+                sum(df_1m['volume'][((match_index_1d - 1) * 1440) + 1 : match_index_1m+1]),
             ]])
 
             x_data = np.concatenate((x_data, append_last.T), axis=1)
@@ -279,16 +307,72 @@ def gen_dataset(symbol):
 
             # ---------------------------------
             y_data = [
-                max(df_5m['high'][match_index_5m:match_index_5m+288]),
-                min(df_5m['low'][match_index_5m:match_index_5m+288]),
-                max(df_5m['high'][match_index_5m:match_index_5m+576]),
-                min(df_5m['low'][match_index_5m:match_index_5m+576]),
-                max(df_5m['high'][match_index_5m:match_index_5m+864]),
-                min(df_5m['low'][match_index_5m:match_index_5m+864]),
-                max(df_5m['high'][match_index_5m:match_index_5m+1152]),
-                min(df_5m['low'][match_index_5m:match_index_5m+1152]),
-                max(df_5m['high'][match_index_5m:match_index_5m+1440]),
-                min(df_5m['low'][match_index_5m:match_index_5m+1440]),
+                df_4h['close'][match_index_4h+1],
+                df_4h['close'][match_index_4h+2],
+                df_4h['close'][match_index_4h+3],
+                df_4h['close'][match_index_4h+4],
+                df_4h['close'][match_index_4h+5],
+                df_4h['close'][match_index_4h+6],
+            ]
+            y_data_df = pd.DataFrame(data=[y_data])
+            y_data_df.to_csv(f'./{symbol}_dataset_y.csv', mode='a', index=False, header=False)
+
+        else:
+            # print(match_index_5m)
+            raise Exception('wrong data!')
+        
+def gen_dataset_type2(symbol):
+    if os.path.exists(f'./{symbol}_dataset_y.csv'):
+        os.remove(f'./{symbol}_dataset_y.csv')
+    if not os.path.exists(f'./dataset_x'):
+        os.mkdir(f'./dataset_x')
+
+    df_1m = pd.read_csv(f'./1min_{symbol}.csv', header=None, names=TITLE)
+    df_4h = pd.read_csv(f'./4hour_{symbol}.csv', header=None, names=TITLE)
+    df_1d = pd.read_csv(f'./1day_{symbol}.csv', header=None, names=TITLE)
+    df_open_time = pd.read_csv(f'./{symbol}_open_timestamp.csv', header=None, names=["rounded_open_timestamp"], dtype=int)
+    # print(df_5m)
+    print('data loaded')
+
+    counter = 0
+    for each_timestamp in tqdm(df_open_time["rounded_open_timestamp"]):
+        # try to match every data
+        match_index_1m = df_1m.index[df_1m["open_timestamp"] == each_timestamp].tolist()
+        match_index_4h = df_4h.index[(df_4h["open_timestamp"] <= each_timestamp) & (df_4h["open_timestamp"]+14400 > each_timestamp)].tolist()
+        
+        if len(match_index_1m) == 1 and len(match_index_4h) == 1:
+            match_index_1m = match_index_1m[0]
+            match_index_4h = match_index_4h[0]
+
+            if match_index_4h < 256:
+                print(match_index_4h)
+                break
+
+            # syntax: df.iloc[row, column]
+            x_data = df_4h.iloc[match_index_4h-255:match_index_4h, [2,3,4,5,7]].T.to_numpy()
+
+            append_last = np.array([[
+                x_data[3][-1],
+                max(df_1m['high'][((match_index_4h - 1) * 240) + 1 : match_index_1m+1]),
+                min(df_1m['low'][((match_index_4h - 1) * 240) + 1 : match_index_1m+1]),
+                df_1m['close'][match_index_1m],
+                sum(df_1m['volume'][((match_index_4h - 1) * 240) + 1 : match_index_1m+1]),
+            ]])
+
+            x_data = np.concatenate((x_data, append_last.T), axis=1)
+
+            with open(f"./dataset_x/BTCUSDT_{counter}.txt", "w") as f:
+                np.savetxt(f, x_data, delimiter=',')
+            counter += 1
+
+            # ---------------------------------
+            y_data = [
+                df_4h['close'][match_index_4h+1],
+                df_4h['close'][match_index_4h+2],
+                df_4h['close'][match_index_4h+3],
+                df_4h['close'][match_index_4h+4],
+                df_4h['close'][match_index_4h+5],
+                df_4h['close'][match_index_4h+6],
             ]
             y_data_df = pd.DataFrame(data=[y_data])
             y_data_df.to_csv(f'./{symbol}_dataset_y.csv', mode='a', index=False, header=False)
@@ -310,9 +394,9 @@ if __name__ == "__main__":
 
     # make csv
     # gen_csv()
-    # get_trader_open_timestamp('BTCUSDT')
+    get_trader_open_timestamp('BTCUSDT')
 
     # label data
-    gen_dataset('BTCUSDT')
+    gen_dataset_type2('BTCUSDT')
 
     print(f'{get_time()} done')

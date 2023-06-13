@@ -58,7 +58,7 @@ class Trainer():
 
     def _train(self):
         self.model.train()  # Set model to training mode
-        losses = []
+        # losses = []
         if self.metric is not None:
             self.metric[0].reset()
 
@@ -72,6 +72,8 @@ class Trainer():
 
             self.optimizer.zero_grad()
             outputs = self.model(inputs)            # Notice 
+            # print(outputs.shape)
+            # print(labels.shape)
             loss = self.loss_fn[0](outputs, labels)
             if self.metric is not None:
                 # prob     = F.softmax(outputs, dim=1).data.cpu()
@@ -79,7 +81,7 @@ class Trainer():
             loss.backward()
             self.optimizer.step()
 
-            losses.append(loss.item())       # Notice
+            losses=loss.item()       # Notice
             if 0 == i % self.log_batchs or (i == len(self.train_data_loader) - 1):
                 local_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
                 batch_mean_loss  = np.mean(losses)
@@ -89,7 +91,7 @@ class Trainer():
                 if i == len(self.train_data_loader) - 1 and self.metric is not None:
                     top1_acc_score = self.metric[0].value()
                     # top5_acc_score = self.metric[0].value()[1]
-                    print_str += '@rooted loss mean: %.4f\t' % (top1_acc_score)
+                    # print_str += '@rooted loss mean: %.4f\t' % (top1_acc_score)
                     # print_str += '@Top-5 Score: %.4f\t' % (top5_acc_score)
                 self.logger.append(print_str)
                 print(f'predict[0]: ', outputs[0].tolist()[:4])
@@ -99,7 +101,7 @@ class Trainer():
 
     def _valid(self):
         self.model.eval()
-        losses = []
+        # losses = []
         acc_rate = 0.
         if self.metric is not None:
             self.metric[0].reset()
@@ -118,7 +120,7 @@ class Trainer():
                 if self.metric is not None:
                     # prob     = F.softmax(outputs, dim=1).data.cpu()
                     self.metric[0].add(outputs.detach().cpu(), labels.data.cpu())
-                losses.append(loss.item())
+                losses = loss.item()
             
         local_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
         #self.logger.append(losses)
