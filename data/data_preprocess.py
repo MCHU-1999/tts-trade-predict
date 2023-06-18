@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from download import download_raw_data
 from tqdm import tqdm
 import pymongo
+from sklearn import preprocessing
 
 
 # Database (internet connection needed)
@@ -108,26 +109,26 @@ def gen_csv():
     print('1 min')
     result = merge_kline_data(data_1min, 1, '1min_BTCUSDT')
     print('done' if result else 'failed')
-    # # 5 min k
-    # print('5 min')
-    # result = merge_kline_data(data_1min, 5, '5min_BTCUSDT')
-    # print('done' if result else 'failed')
-    # # 15 min k
-    # print('15 min')
-    # result = merge_kline_data(data_1min, 15, '15min_BTCUSDT')
-    # print('done' if result else 'failed')
-    # # 1 hour k
-    # print('1 hour')
-    # result = merge_kline_data(data_1min, 60, '1hour_BTCUSDT')
-    # print('done' if result else 'failed')
-    # # 4 hour k
-    # print('4 hour')
-    # result = merge_kline_data(data_1min, 240, '4hour_BTCUSDT')
-    # print('done' if result else 'failed')
-    # # 1 day k
-    # print('1 day')
-    # result = merge_kline_data(data_1min, 1440, '1day_BTCUSDT')
-    # print('done' if result else 'failed')
+    # 5 min k
+    print('5 min')
+    result = merge_kline_data(data_1min, 5, '5min_BTCUSDT')
+    print('done' if result else 'failed')
+    # 15 min k
+    print('15 min')
+    result = merge_kline_data(data_1min, 15, '15min_BTCUSDT')
+    print('done' if result else 'failed')
+    # 1 hour k
+    print('1 hour')
+    result = merge_kline_data(data_1min, 60, '1hour_BTCUSDT')
+    print('done' if result else 'failed')
+    # 4 hour k
+    print('4 hour')
+    result = merge_kline_data(data_1min, 240, '4hour_BTCUSDT')
+    print('done' if result else 'failed')
+    # 1 day k
+    print('1 day')
+    result = merge_kline_data(data_1min, 1440, '1day_BTCUSDT')
+    print('done' if result else 'failed')
 
     return None
 
@@ -331,6 +332,7 @@ def gen_dataset_type2(symbol):
     df_4h = pd.read_csv(f'./4hour_{symbol}.csv', header=None, names=TITLE)
     df_1d = pd.read_csv(f'./1day_{symbol}.csv', header=None, names=TITLE)
     df_open_time = pd.read_csv(f'./{symbol}_open_timestamp.csv', header=None, names=["rounded_open_timestamp"], dtype=int)
+
     # print(df_5m)
     print('data loaded')
 
@@ -349,17 +351,24 @@ def gen_dataset_type2(symbol):
                 break
 
             # syntax: df.iloc[row, column]
-            x_data = df_4h.iloc[match_index_4h-255:match_index_4h, [2,3,4,5,7]].T.to_numpy()
+            x_data = df_4h.iloc[match_index_4h-255:match_index_4h, [5,7]].T.to_numpy()
 
             append_last = np.array([[
-                x_data[3][-1],
-                max(df_1m['high'][((match_index_4h - 1) * 240) + 1 : match_index_1m+1]),
-                min(df_1m['low'][((match_index_4h - 1) * 240) + 1 : match_index_1m+1]),
+                # x_data[3][-1],
+                # max(df_1m['high'][((match_index_4h - 1) * 240) + 1 : match_index_1m+1]),
+                # min(df_1m['low'][((match_index_4h - 1) * 240) + 1 : match_index_1m+1]),
                 df_1m['close'][match_index_1m],
                 sum(df_1m['volume'][((match_index_4h - 1) * 240) + 1 : match_index_1m+1]),
             ]])
 
             x_data = np.concatenate((x_data, append_last.T), axis=1)
+            vol = x_data[1]
+            normalized_vol = preprocessing.normalize([vol])
+            x_data = np.delete(x_data, 1, 0)
+            x_data = np.multiply(x_data, normalized_vol)
+            # x_data = np.concatenate((x_data, normalized_vol), axis=0)
+            # print(x_data)
+            # break
 
             with open(f"./dataset_x/BTCUSDT_{counter}.txt", "w") as f:
                 np.savetxt(f, x_data, delimiter=',')
@@ -394,7 +403,7 @@ if __name__ == "__main__":
 
     # make csv
     # gen_csv()
-    get_trader_open_timestamp('BTCUSDT')
+    # get_trader_open_timestamp('BTCUSDT')
 
     # label data
     gen_dataset_type2('BTCUSDT')

@@ -12,14 +12,14 @@ def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
 
 class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=16):
+    def __init__(self, in_planes=5, ratio=2):
         super(ChannelAttention, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
            
-        self.fc = nn.Sequential(nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False),
+        self.fc = nn.Sequential(nn.Conv2d(in_planes, in_planes//ratio, 1, bias=False),
                                nn.ReLU(),
-                               nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False))
+                               nn.Conv2d(in_planes//ratio, in_planes, 1, bias=False))
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):

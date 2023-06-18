@@ -17,9 +17,12 @@ from torch.utils.data import DataLoader, Dataset
 from dataset import KlineDataset, KlineDataset_256, split_and_load
 
 # Constants -------------------------------
-BATCH_SIZE = 32
+BATCH_SIZE = 128
 MODEL_TYPE = 'transformer1d'
 DEVICE = 'mps'
+
+START_EPOCH = 0
+NUM_EPOCHS = 50
 
 # -----------------------------------------
 
@@ -48,7 +51,7 @@ def main(args):
         writer = None
 
     # prepare data
-    x_train, x_test, y_train, y_test = split_and_load(test_size=0.2, random_state=33)
+    x_train, x_test, y_train, y_test = split_and_load(test_size=0.1, random_state=33)
     train_dataset = KlineDataset_256(x_train, y_train)
     val_dataset = KlineDataset_256(x_test, y_test)
     train_loader = DataLoader(train_dataset, batch_size = BATCH_SIZE)
@@ -62,28 +65,30 @@ def main(args):
         logger.append([x, y])
 
     cudnn.benchmark = True
-    # my_model = resnet_cbam.resnet18_cbam()
+    # my_model = resnet_cbam.resnet34_cbam()
     my_model = transformer1d.Transformer1d()
     # my_model.load_state_dict(state_dict)
     gpu_exist = torch.cuda.is_available() or torch.backends.mps.is_available()
     device = torch.device(DEVICE)
 
+    #my_model.apply(fc_init)
     # if gpu_exist:
     my_model = my_model.to(device)
 
-    loss_function = [nn.MSELoss()]
-    # optimizer = optim.SGD(my_model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
-    optimizer = optim.Adam(my_model.parameters(), lr=0.009)
-    lr_schedule = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
-    # lr_schedule = lr_scheduler.MultiStepLR(optimizer, milestones=[15, 30, 45, 60], gamma=0.4)
-
-    # metric = [ClassErrorMeter([1,5], True)]
+    # loss_function
+    loss_function = [nn.L1Loss()]
     metric = [MSEMeter(root=True)]
-    start_epoch = 0
-    num_epochs = 100
 
+    # optimizer 
+    optimizer = optim.SGD(my_model.parameters(), lr=0.001, momentum=0.8, weight_decay=1e-4)
+    # optimizer = optim.Adam(my_model.parameters(), lr=0.0002)
+
+    # scheduler
+    lr_schedule = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+
+    # trainer
     my_trainer = Trainer(my_model, MODEL_TYPE, loss_function, optimizer, lr_schedule, 500, gpu_exist, device, train_loader, \
-                        val_loader, metric, start_epoch, num_epochs, args.debug, logger, writer)
+                        val_loader, metric, START_EPOCH, NUM_EPOCHS, args.debug, logger, writer)
     my_trainer.fit()
     logger.append('Optimize Done!')
 
